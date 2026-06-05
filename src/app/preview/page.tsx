@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { validateOrders } from '@/lib/validation';
 import type { ParsedOrder, ValidationError } from '@/types/rule-engine';
 
-// 表格列定义
 const COLUMNS = [
   { key: 'externalCode', label: '外部编码', width: 120, required: false },
   { key: 'storeName', label: '收货门店', width: 180, required: false },
@@ -26,13 +25,11 @@ function PreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const parentRef = useRef<HTMLDivElement>(null);
-
   const [data, setData] = useState<ParsedOrder[]>([]);
   const [editingCell, setEditingCell] = useState<null | { row: number; field: string }>(null);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // 模拟数据
   useEffect(() => {
     const mockData = generateMockData(50);
     setData(mockData);
@@ -46,9 +43,7 @@ function PreviewContent() {
     return rows;
   }, [errors]);
 
-  const getCellErrors = (rowIndex: number, field: string) => {
-    return errors.filter(e => e.row === rowIndex && e.field === field);
-  };
+  const getCellErrors = (rowIndex: number, field: string) => errors.filter(e => e.row === rowIndex && e.field === field);
 
   const rowVirtualizer = useVirtualizer({
     count: data.length,
@@ -57,9 +52,7 @@ function PreviewContent() {
     overscan: 5,
   });
 
-  const handleCellClick = (rowIndex: number, field: string) => {
-    setEditingCell({ row: rowIndex, field });
-  };
+  const handleCellClick = (rowIndex: number, field: string) => setEditingCell({ row: rowIndex, field });
 
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
     const newData = [...data];
@@ -68,20 +61,16 @@ function PreviewContent() {
   };
 
   const handleDeleteRow = (rowIndex: number) => {
-    const newData = data.filter((_, i) => i !== rowIndex);
-    setData(newData);
+    setData(data.filter((_, i) => i !== rowIndex));
     toast.success('已删除该行');
   };
 
   const handleAddRow = () => {
-    const newRow: ParsedOrder = { skuCode: '', skuName: '', skuQuantity: 1 };
-    setData([...data, newRow]);
+    setData([...data, { skuCode: '', skuName: '', skuQuantity: 1 }]);
     toast.success('已添加空行');
   };
 
-  const handleExport = () => {
-    toast.info('导出功能开发中');
-  };
+  const handleExport = () => toast.info('导出功能开发中');
 
   const handleSubmit = async () => {
     const result = validateOrders(data);
@@ -96,8 +85,9 @@ function PreviewContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders: data }),
       });
-      if (!response.ok) throw new Error('提交失败');
-      toast.success('提交成功！');
+      const responseData = await response.json();
+      if (!response.ok) throw new Error(responseData.error || '提交失败');
+      toast.success(responseData.message || '提交成功！');
       router.push('/waybills');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '提交失败');
@@ -115,24 +105,22 @@ function PreviewContent() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-[#0f172a]">数据预览</h1>
-            <p className="text-sm text-[#64748b]">共 {data.length} 条记录</p>
+            <p className="text-sm text-[#64748b]">共 {data.length} 条记录{errors.length > 0 && <span className="text-[#ef4444]"> · {errors.length} 个错误待修正</span>}</p>
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={handleAddRow} className="btn-secondary">
-            <Plus className="w-4 h-4" /> 添加行
-          </button>
-          <button onClick={handleExport} className="btn-secondary">
-            <Download className="w-4 h-4" /> 导出 Excel
-          </button>
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
+          <button onClick={handleAddRow} className="btn-secondary"><Plus className="w-4 h-4" /> 添加行</button>
+          <button onClick={handleExport} className="btn-secondary"><Download className="w-4 h-4" /> 导出 Excel</button>
+          <button onClick={handleSubmit} disabled={submitting || errors.length > 0} className="btn-primary">
             <CheckCircle className="w-4 h-4" /> {submitting ? '提交中...' : '提交下单'}
           </button>
         </div>
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <div className="border-b border-[#e2e8f0] bg-[#f8fafc]">
+      {/* 数据表格 */}
+      <div className="card p-0 overflow-hidden shadow-sm">
+        {/* 表头 */}
+        <div className="border-b-2 border-[#e2e8f0] bg-[#f8fafc]">
           <div className="flex" style={{ minWidth: 'max-content' }}>
             {COLUMNS.map(col => (
               <div key={col.key} className="font-semibold text-[#0f172a] px-4 py-3 border-r border-[#e2e8f0]" style={{ width: col.width }}>
@@ -143,7 +131,8 @@ function PreviewContent() {
           </div>
         </div>
 
-        <div ref={parentRef} className="h-[600px] overflow-auto">
+        {/* 表格内容 */}
+        <div ref={parentRef} className="h-[600px] overflow-auto bg-white">
           <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: 'max-content' }}>
             {rowVirtualizer.getVirtualItems().map(virtualRow => {
               const rowIndex = virtualRow.index;
@@ -152,14 +141,13 @@ function PreviewContent() {
               return (
                 <div
                   key={virtualRow.key}
-                  className={`flex border-b border-[#e2e8f0] hover:bg-[#e0f7f6] ${hasError ? 'bg-[#fee2e2]' : ''}`}
+                  className={`flex border-b border-[#e2e8f0] hover:bg-[#e0f7f6] ${hasError ? 'bg-[#fee2e2]' : 'bg-white'}`}
                   style={{ position: 'absolute', top: 0, left: 0, width: 'max-content', transform: `translateY(${virtualRow.start}px)` }}
                 >
                   {COLUMNS.map(col => {
-                    const cellErrors = getCellErrors(rowIndex + 1, col.key);
                     const isEditing = editingCell?.row === rowIndex && editingCell?.field === col.key;
                     return (
-                      <div key={col.key} className={`px-4 py-2 border-r border-[#e2e8f0] editable-cell`} style={{ width: col.width }}>
+                      <div key={col.key} className="px-4 py-2 border-r border-[#e2e8f0]" style={{ width: col.width }}>
                         {isEditing ? (
                           <input
                             type={col.key === 'skuQuantity' ? 'number' : 'text'}
@@ -170,16 +158,16 @@ function PreviewContent() {
                             className="input p-1 text-sm"
                           />
                         ) : (
-                          <div onClick={() => handleCellClick(rowIndex, col.key)} className="text-sm text-[#0f172a]">
-                            {String(rowData[col.key as keyof ParsedOrder] || '')}
+                          <div onClick={() => handleCellClick(rowIndex, col.key)} className="text-sm text-[#0f172a] cursor-pointer hover:bg-[#f1f5f9] min-h-[28px]">
+                            {String(rowData[col.key as keyof ParsedOrder] || '-')}
                           </div>
                         )}
                       </div>
                     );
                   })}
-                  <div className="w-10 flex items-center justify-center border-r border-[#e2e8f0]">
-                    <button onClick={() => handleDeleteRow(rowIndex)} className="p-1 hover:bg-white rounded">
-                      <Trash2 className="w-4 h-4 text-[#64748b]" />
+                  <div className="w-10 flex items-center justify-center">
+                    <button onClick={() => handleDeleteRow(rowIndex)} className="p-1 hover:text-[#ef4444]">
+                      <X className="w-4 h-4 text-[#64748b]" />
                     </button>
                   </div>
                 </div>
@@ -188,6 +176,23 @@ function PreviewContent() {
           </div>
         </div>
       </div>
+
+      {errors.length > 0 && (
+        <div className="card bg-[#fee2e2] border-[#fecaca]">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-[#ef4444] flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-[#991b1b] mb-2">发现 {errors.length} 个错误</h3>
+              <div className="max-h-32 overflow-auto text-sm text-[#991b1b] space-y-1">
+                {errors.slice(0, 5).map((error, i) => (
+                  <div key={i}>· 第{error.row}行：{error.field} - {error.message}</div>
+                ))}
+                {errors.length > 5 && <div>... 还有 {errors.length - 5} 个错误</div>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
