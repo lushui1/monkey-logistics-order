@@ -1,58 +1,35 @@
 'use client';
 
-import { Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { CheckCircle, AlertCircle, X, Plus, Trash2, Download, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Download, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateOrders } from '@/lib/validation';
-import type { ParsedOrder, ValidationError } from '@/types/rule-engine';
+import type { ParsedOrder } from '@/types/rule-engine';
 
 const COLUMNS = [
-  { key: 'externalCode', label: '外部编码', width: 120, required: false },
-  { key: 'storeName', label: '收货门店', width: 180, required: false },
-  { key: 'recipientName', label: '收件人', width: 100, required: false },
-  { key: 'recipientPhone', label: '电话', width: 130, required: false },
-  { key: 'recipientAddress', label: '收货地址', width: 250, required: false },
+  { key: 'externalCode', label: '外部编码', width: 120 },
+  { key: 'storeName', label: '收货门店', width: 150 },
+  { key: 'recipientName', label: '收件人', width: 100 },
+  { key: 'recipientPhone', label: '电话', width: 130 },
+  { key: 'recipientAddress', label: '收货地址', width: 220 },
   { key: 'skuCode', label: 'SKU 编码', width: 120, required: true },
   { key: 'skuName', label: 'SKU 名称', width: 150, required: true },
   { key: 'skuQuantity', label: '数量', width: 80, required: true },
-  { key: 'skuSpec', label: '规格型号', width: 120, required: false },
-  { key: 'remark', label: '备注', width: 150, required: false },
+  { key: 'skuSpec', label: '规格', width: 100 },
+  { key: 'remark', label: '备注', width: 150 },
 ];
 
 function PreviewContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const parentRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<ParsedOrder[]>([]);
-  const [editingCell, setEditingCell] = useState<null | { row: number; field: string }>(null);
-  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const mockData = generateMockData(50);
+    const mockData = generateMockData(20);
     setData(mockData);
-    const result = validateOrders(mockData);
-    setErrors(result.errors.map(e => ({ ...e, row: e.row })));
   }, []);
-
-  const errorRows = useMemo(() => {
-    const rows = new Set<number>();
-    errors.forEach(e => rows.add(e.row));
-    return rows;
-  }, [errors]);
-
-  const getCellErrors = (rowIndex: number, field: string) => errors.filter(e => e.row === rowIndex && e.field === field);
-
-  const rowVirtualizer = useVirtualizer({
-    count: data.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 40,
-    overscan: 5,
-  });
-
-  const handleCellClick = (rowIndex: number, field: string) => setEditingCell({ row: rowIndex, field });
 
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
     const newData = [...data];
@@ -62,20 +39,17 @@ function PreviewContent() {
 
   const handleDeleteRow = (rowIndex: number) => {
     setData(data.filter((_, i) => i !== rowIndex));
-    toast.success('已删除该行');
   };
 
   const handleAddRow = () => {
     setData([...data, { skuCode: '', skuName: '', skuQuantity: 1 }]);
-    toast.success('已添加空行');
   };
-
-  const handleExport = () => toast.info('导出功能开发中');
 
   const handleSubmit = async () => {
     const result = validateOrders(data);
     if (!result.valid) {
       toast.error(`存在 ${result.errors.length} 个错误，请修正后提交`);
+      result.errors.forEach(e => toast.error(`第${e.row}行：${e.field} - ${e.message}`));
       return;
     }
     setSubmitting(true);
@@ -85,121 +59,99 @@ function PreviewContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders: data }),
       });
-      const responseData = await response.json();
-      if (!response.ok) throw new Error(responseData.error || '提交失败');
-      toast.success(responseData.message || '提交成功！');
-      router.push('/waybills');
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || '提交失败');
+      toast.success(resData.message || '提交成功！即将跳转...');
+      setTimeout(() => router.push('/waybills'), 1000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : '提交失败');
+      toast.error(error instanceof Error ? error.message : '提交失败，请重试');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="btn-secondary">
-            <ArrowLeft className="w-4 h-4" /> 返回
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-[#0f172a]">数据预览</h1>
-            <p className="text-sm text-[#64748b]">共 {data.length} 条记录{errors.length > 0 && <span className="text-[#ef4444]"> · {errors.length} 个错误待修正</span>}</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handleAddRow} className="btn-secondary"><Plus className="w-4 h-4" /> 添加行</button>
-          <button onClick={handleExport} className="btn-secondary"><Download className="w-4 h-4" /> 导出 Excel</button>
-          <button onClick={handleSubmit} disabled={submitting || errors.length > 0} className="btn-primary">
-            <CheckCircle className="w-4 h-4" /> {submitting ? '提交中...' : '提交下单'}
-          </button>
-        </div>
-      </div>
-
-      {/* 数据表格 */}
-      <div className="card p-0 overflow-hidden shadow-sm">
-        {/* 表头 */}
-        <div className="border-b-2 border-[#e2e8f0] bg-[#f8fafc]">
-          <div className="flex" style={{ minWidth: 'max-content' }}>
-            {COLUMNS.map(col => (
-              <div key={col.key} className="font-semibold text-[#0f172a] px-4 py-3 border-r border-[#e2e8f0]" style={{ width: col.width }}>
-                {col.label}{col.required && <span className="text-[#ef4444] ml-1">*</span>}
-              </div>
-            ))}
-            <div className="w-10" />
-          </div>
-        </div>
-
-        {/* 表格内容 */}
-        <div ref={parentRef} className="h-[600px] overflow-auto bg-white">
-          <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: 'max-content' }}>
-            {rowVirtualizer.getVirtualItems().map(virtualRow => {
-              const rowIndex = virtualRow.index;
-              const rowData = data[rowIndex];
-              const hasError = errorRows.has(rowIndex + 1);
-              return (
-                <div
-                  key={virtualRow.key}
-                  className={`flex border-b border-[#e2e8f0] hover:bg-[#e0f7f6] ${hasError ? 'bg-[#fee2e2]' : 'bg-white'}`}
-                  style={{ position: 'absolute', top: 0, left: 0, width: 'max-content', transform: `translateY(${virtualRow.start}px)` }}
-                >
-                  {COLUMNS.map(col => {
-                    const isEditing = editingCell?.row === rowIndex && editingCell?.field === col.key;
-                    return (
-                      <div key={col.key} className="px-4 py-2 border-r border-[#e2e8f0]" style={{ width: col.width }}>
-                        {isEditing ? (
-                          <input
-                            type={col.key === 'skuQuantity' ? 'number' : 'text'}
-                            value={String(rowData[col.key as keyof ParsedOrder] || '')}
-                            onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
-                            onBlur={() => setEditingCell(null)}
-                            autoFocus
-                            className="input p-1 text-sm"
-                          />
-                        ) : (
-                          <div onClick={() => handleCellClick(rowIndex, col.key)} className="text-sm text-[#0f172a] cursor-pointer hover:bg-[#f1f5f9] min-h-[28px]">
-                            {String(rowData[col.key as keyof ParsedOrder] || '-')}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="w-10 flex items-center justify-center">
-                    <button onClick={() => handleDeleteRow(rowIndex)} className="p-1 hover:text-[#ef4444]">
-                      <X className="w-4 h-4 text-[#64748b]" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {errors.length > 0 && (
-        <div className="card bg-[#fee2e2] border-[#fecaca]">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[#ef4444] flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-[#991b1b] mb-2">发现 {errors.length} 个错误</h3>
-              <div className="max-h-32 overflow-auto text-sm text-[#991b1b] space-y-1">
-                {errors.slice(0, 5).map((error, i) => (
-                  <div key={i}>· 第{error.row}行：{error.field} - {error.message}</div>
-                ))}
-                {errors.length > 5 && <div>... 还有 {errors.length - 5} 个错误</div>}
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* 顶部操作栏 */}
+      <div className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-gray-50">
+              <ArrowLeft size={18} /> 返回
+            </button>
+            <div>
+              <h1 className="text-lg font-semibold">数据预览</h1>
+              <p className="text-sm text-gray-500">共 {data.length} 条记录</p>
             </div>
           </div>
+          <div className="flex gap-3">
+            <button onClick={handleAddRow} className="flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-gray-50">
+              <Plus size={18} /> 添加行
+            </button>
+            <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50">
+              <CheckCircle size={18} /> {submitting ? '提交中...' : '提交下单'}
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* 表格 */}
+      <div className="p-6">
+        <div className="bg-white rounded-lg shadow border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  {COLUMNS.map(col => (
+                    <th key={col.key} className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-r last:border-r-0 whitespace-nowrap" style={{ width: col.width }}>
+                      {col.label}{col.required && <span className="text-red-500 ml-1">*</span>}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b w-12">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-cyan-50/30">
+                    {COLUMNS.map(col => {
+                      const isEditing = editingCell?.row === rowIndex && editingCell?.field === col.key;
+                      return (
+                        <td key={col.key} className="px-4 py-2 border-b border-r last:border-r-0" onClick={() => !isEditing && handleCellChange(rowIndex, col.key, String(row[col.key as keyof ParsedOrder] || ''))}>
+                          {isEditing ? (
+                            <input
+                              autoFocus
+                              className="w-full px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              value={String(row[col.key as keyof ParsedOrder] || '')}
+                              onChange={(e) => handleCellChange(rowIndex, col.key, e.target.value)}
+                              onBlur={() => setEditingCell(null)}
+                            />
+                          ) : (
+                            <div className="text-sm text-gray-900 min-h-[28px] cursor-pointer">
+                              {String(row[col.key as keyof ParsedOrder] || '-')}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="px-4 py-2 border-b">
+                      <button onClick={() => handleDeleteRow(rowIndex)} className="p-1 hover:bg-red-50 rounded">
+                        <X size={16} className="text-gray-500 hover:text-red-500" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function PreviewPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="loading-spinner" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">加载中...</div>}>
       <PreviewContent />
     </Suspense>
   );
