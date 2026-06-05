@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "name": "monkey-logistics-order",
+  "buildCommand": "pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
+  "outputDirectory": ".next",
+  "regions": ["hnd1"],
+  "env": {
+    "DATABASE_URL": "@neon-database-url",
+    "LLM_PROVIDER": "deepseek",
+    "LLM_API_KEY": "@deepseek-api-key",
+    "LLM_MODEL": "deepseek-chat"
+  }
+}
