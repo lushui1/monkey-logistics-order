@@ -1,10 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { pgTable, text, integer, timestamp, boolean, index } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, text, integer, timestamp, index } from 'drizzle-orm/pg-core';
 
-// 数据库连接
-export const sql = neon(process.env.DATABASE_URL || '');
+// Database connection - gracefully handle missing URL
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/placeholder';
+export const sql = neon(databaseUrl);
 export const db = drizzle(sql);
 
 // 解析规则表
