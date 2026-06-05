@@ -17,7 +17,6 @@ function RulesNewContent() {
 
   useEffect(() => {
     if (fileId) {
-      // 模拟 AI 生成规则
       simulateAIGeneration();
     }
   }, [fileId]);
@@ -25,7 +24,6 @@ function RulesNewContent() {
   const simulateAIGeneration = async () => {
     setLoading(true);
     try {
-      // 调用 AI 生成规则 API
       const response = await fetch(`/api/rules/generate?fileId=${fileId}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '生成失败');
@@ -33,23 +31,24 @@ function RulesNewContent() {
       setFileName(data.fileName);
       toast.success('AI 规则生成成功！请确认字段映射');
     } catch (error) {
-      // 使用模拟数据
       const mockRule: ParsingRule = {
         id: 'mock-rule',
         name: '自动生成的解析规则',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         fileType: 'excel',
         dataRow: { startRow: 1 },
         fieldMappings: [
-          { field: 'externalCode', sourceCol: 0, transform: { type: 'trim' } },
-          { field: 'storeName', sourceCol: 1, transform: { type: 'trim' } },
-          { field: 'recipientName', sourceCol: 2, transform: { type: 'trim' } },
-          { field: 'recipientPhone', sourceCol: 3, transform: { type: 'trim' } },
-          { field: 'recipientAddress', sourceCol: 4, transform: { type: 'trim' } },
-          { field: 'skuCode', sourceCol: 5, transform: { type: 'trim' }, required: true },
-          { field: 'skuName', sourceCol: 6, transform: { type: 'trim' }, required: true },
-          { field: 'skuQuantity', sourceCol: 7, transform: { type: 'number' }, required: true },
-          { field: 'skuSpec', sourceCol: 8, transform: { type: 'trim' } },
-          { field: 'remark', sourceCol: 9, transform: { type: 'trim' } },
+          { field: 'externalCode', source: 'cell', locator: { type: 'row-col', col: 0 }, transform: { type: 'trim' } },
+          { field: 'storeName', source: 'cell', locator: { type: 'row-col', col: 1 }, transform: { type: 'trim' } },
+          { field: 'recipientName', source: 'cell', locator: { type: 'row-col', col: 2 }, transform: { type: 'trim' } },
+          { field: 'recipientPhone', source: 'cell', locator: { type: 'row-col', col: 3 }, transform: { type: 'trim' } },
+          { field: 'recipientAddress', source: 'cell', locator: { type: 'row-col', col: 4 }, transform: { type: 'trim' } },
+          { field: 'skuCode', source: 'cell', locator: { type: 'row-col', col: 5 }, transform: { type: 'trim' }, required: true },
+          { field: 'skuName', source: 'cell', locator: { type: 'row-col', col: 6 }, transform: { type: 'trim' }, required: true },
+          { field: 'skuQuantity', source: 'cell', locator: { type: 'row-col', col: 7 }, transform: { type: 'number' }, required: true },
+          { field: 'skuSpec', source: 'cell', locator: { type: 'row-col', col: 8 }, transform: { type: 'trim' } },
+          { field: 'remark', source: 'cell', locator: { type: 'row-col', col: 9 }, transform: { type: 'trim' } },
         ],
       };
       setRule(mockRule);
@@ -142,7 +141,11 @@ function RulesNewContent() {
                     <tr key={mapping.field} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-500 border-b border-r text-center">{index + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 border-b border-r font-medium">{mapping.field}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 border-b border-r">列 {mapping.sourceCol !== undefined ? mapping.sourceCol + 1 : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 border-b border-r">
+                        {mapping.locator.type === 'row-col' && mapping.locator.col !== undefined 
+                          ? `列 ${typeof mapping.locator.col === 'number' ? mapping.locator.col + 1 : mapping.locator.col}`
+                          : '-'}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600 border-b border-r">{mapping.transform?.type || '无'}</td>
                       <td className="px-4 py-3 text-sm border-b">
                         {mapping.required ? (
@@ -163,7 +166,7 @@ function RulesNewContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">起始行</label>
-                  <div className="text-gray-900 font-medium">第 {rule.dataRow?.startRow ? rule.dataRow.startRow + 1 : '-'} 行</div>
+                  <div className="text-gray-900 font-medium">第 {rule.dataRow?.startRow ? (typeof rule.dataRow.startRow === 'number' ? rule.dataRow.startRow + 1 : '-') : '-'} 行</div>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">起始关键词</label>

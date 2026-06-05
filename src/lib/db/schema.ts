@@ -1,10 +1,10 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { pgTable, text, integer, timestamp, index } from 'drizzle-orm/pg-core';
+import postgres from 'postgres';
 
 // Database connection - use proper format for placeholder
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://user:pass@localhost/neondb/monkey-logistics?sslmode=require';
-export const sql = neon(databaseUrl);
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/neondb';
+export const sql = postgres(databaseUrl, { prepare: false });
 export const db = drizzle(sql);
 
 // 解析规则表
@@ -47,7 +47,3 @@ export type ParsingRule = any;
 export type NewParsingRule = any;
 export type Waybill = any;
 export type NewWaybill = any;
-
-// 关系定义（简化版本）
-export const parsingRulesRelations = {};
-export const waybillsRelations = {};
