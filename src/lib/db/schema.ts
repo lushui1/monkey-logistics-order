@@ -2,8 +2,8 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { pgTable, text, integer, timestamp, index } from 'drizzle-orm/pg-core';
 
-// Database connection - gracefully handle missing URL
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/placeholder';
+// Database connection - use proper format for placeholder
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://user:pass@localhost/neondb/monkey-logistics?sslmode=require';
 export const sql = neon(databaseUrl);
 export const db = drizzle(sql);
 
